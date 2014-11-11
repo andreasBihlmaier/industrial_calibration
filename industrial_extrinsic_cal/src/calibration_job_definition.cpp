@@ -176,7 +176,8 @@ namespace industrial_extrinsic_cal
 	    }
 	    else if(transform_interface == std::string("ros_camera_housing_bti")){ 
 	      camera_housing_frame = this_camera["camera_housing_frame"].as<std::string>();
-	      temp_ti = make_shared<ROSCameraHousingBroadcastTInterface>(camera_optical_frame, camera_housing_frame, pose);
+	      camera_mounting_frame = this_camera["camera_mounting_frame"].as<std::string>(); 
+	      temp_ti = make_shared<ROSCameraHousingBroadcastTInterface>(camera_optical_frame, camera_housing_frame, camera_mounting_frame, pose);
 	    }
 	    else if(transform_interface == std::string("ros_camera_housing_cti")){ 
 	      camera_housing_frame  = this_camera["camera_housing_frame"].as<std::string>();
@@ -291,7 +292,8 @@ namespace industrial_extrinsic_cal
 	    }
 	    else if(transform_interface == std::string("ros_camera_housing_bti")){ 
 	      camera_housing_frame = this_camera["camera_housing_frame"].as<std::string>();
-	      temp_ti = make_shared<ROSCameraHousingBroadcastTInterface>(camera_optical_frame, camera_housing_frame, pose);
+	      camera_mounting_frame = this_camera["camera_mounting_frame"].as<std::string>(); 
+	      temp_ti = make_shared<ROSCameraHousingBroadcastTInterface>(camera_optical_frame, camera_housing_frame, camera_mounting_frame, pose);
 	    }
 	    else if(transform_interface == std::string("ros_camera_housing_cti")){ 
 	      camera_housing_frame  = this_camera["camera_housing_frame"].as<std::string>();
@@ -764,6 +766,9 @@ namespace industrial_extrinsic_cal
     int total_observations =0;
     for(int i=0;i<observation_data_point_list_.size();i++){
       total_observations += observation_data_point_list_[i].items_.size();
+      for (int pntIdx = 0; pntIdx < observation_data_point_list_[i].items_.size(); pntIdx++) {
+        ROS_INFO("%d: %f %f", pntIdx, observation_data_point_list_[i].items_[pntIdx].image_x_, observation_data_point_list_[i].items_[pntIdx].image_y_);
+      }
     }
     if(total_observations == 0){ // TODO really need more than number of parameters being computed
       ROS_ERROR("Too few observations: %d",total_observations);
