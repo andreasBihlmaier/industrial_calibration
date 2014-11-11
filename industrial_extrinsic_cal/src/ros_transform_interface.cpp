@@ -242,7 +242,16 @@ namespace industrial_extrinsic_cal
 
   bool   ROSCameraHousingBroadcastTInterface::pushTransform(Pose6d & pose)
   {
-    pose_ = pose; 
+    std::cout << ">>>>>>>>>>>>>>>>>" << std::endl;
+    std::cout << "ROSCameraHousingBroadcastTInterface::pushTransform()" << std::endl;
+    Pose6d mountingMVoptical = pose.getInverse();
+    Pose6d opticalMVhousing = getPoseFromTF(transform_frame_, housing_frame_, tf_listener_);
+    Pose6d mountingMVhousing = mountingMVoptical * opticalMVhousing;
+    mountingMVoptical.show("mountingMVoptical = pose");
+    opticalMVhousing.show("opticalMVhousing");
+    mountingMVhousing.show("stored: mountingMVhousing");
+    pose_ = mountingMVhousing;
+    std::cout << "<<<<<<<<<<<<<<<<<" << std::endl;
     if(!ref_frame_initialized_){ 
       return(false);		// timer won't start publishing until ref_frame_ is defined
     }
@@ -321,18 +330,16 @@ namespace industrial_extrinsic_cal
     std::cout << ">>>>>>>>>>>>>>>>>" << std::endl;
     std::cout << "ROSCameraHousingBroadcastTInterface::pullTransform()" << std::endl;
 
-    Pose6d optical2housing = getPoseFromTF( transform_frame_, housing_frame_, tf_listener_);
-    optical2housing.show("optical2housing");
-
-    Pose6d mount2housing = pose_;
-    mount2housing.show("mount2housing");
-    Pose6d housing2mount = mount2housing.getInverse();
-    housing2mount.show("housing2mount");
-    Pose6d optical2mount = optical2housing * housing2mount;
-    housing2mount.show("res: optical2mount");
-    //getIntermediateFrame(); // update intermediate frame from tf
+    Pose6d opticalMVhousing = getPoseFromTF(transform_frame_, housing_frame_, tf_listener_);
+    Pose6d mountingMVhousing = pose_;
+    Pose6d housingMVmounting = mountingMVhousing.getInverse();
+    Pose6d opticalMVmounting = opticalMVhousing * housingMVmounting;
+    opticalMVhousing.show("opticalMVhousing");
+    mountingMVhousing.show("mountingMVhousing");
+    housingMVmounting.show("housingMVmounting");
+    opticalMVmounting.show("res: opticalMVmounting");
     std::cout << "<<<<<<<<<<<<<<<<<" << std::endl;
-    return(optical2mount);
+    return(opticalMVmounting);
   }
 
 
@@ -401,6 +408,7 @@ namespace industrial_extrinsic_cal
     Pose6d optical2mount = optical2housing * housing2mount;
     pose_ = optical2mount;
     getIntermediateFrame(); // update intermediate frame from tf
+    optical2mount.show("res: optical2mount");
     return(optical2mount);
   }
 
