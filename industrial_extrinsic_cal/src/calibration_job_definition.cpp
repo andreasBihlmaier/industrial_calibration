@@ -768,8 +768,12 @@ namespace industrial_extrinsic_cal
       total_observations += observation_data_point_list_[i].items_.size();
       std::stringstream observations_ss;
       for (int pntIdx = 0; pntIdx < observation_data_point_list_[i].items_.size(); pntIdx++) {
-        ROS_INFO("%d: %f %f", pntIdx, observation_data_point_list_[i].items_[pntIdx].image_x_, observation_data_point_list_[i].items_[pntIdx].image_y_);
-        observations_ss << "[" << observation_data_point_list_[i].items_[pntIdx].image_x_ << ", " << observation_data_point_list_[i].items_[pntIdx].image_y_ << "],";
+        const ObservationDataPoint& odp = observation_data_point_list_[i].items_[pntIdx];
+        ROS_INFO("%d: id=%d pos=[%f, %f, %f] img=[%f, %f]", pntIdx,
+            odp.point_id_,
+            odp.point_position_[0], odp.point_position_[1], odp.point_position_[2],
+            odp.image_x_, odp.image_y_);
+        observations_ss << "[" << odp.image_x_ << ", " << odp.image_y_ << "],";
       }
       ROS_INFO("project_points2d: %s", observations_ss.str().c_str());
     }
