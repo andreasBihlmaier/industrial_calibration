@@ -1149,6 +1149,21 @@ namespace industrial_extrinsic_cal
 		    }
 		  }
 		  break;
+		case cost_functions::CalibrateTargetposeForCircleTarget:
+		  {
+		    CostFunction* cost_function =
+		      CalibrateTargetposeForCircleTarget::Create(image_x, image_y, 
+								 circle_dia,
+								 focal_length_x,
+								 focal_length_y,
+								 center_x,
+								 center_y,
+								 camera_mounting_pose,
+								 point,
+                 extrinsics);
+		    problem_.AddResidualBlock(cost_function, NULL, target_pose_params);
+      }
+      break;
 		default:
 		  {
 		    std::string cost_type_string = costType2String(ODP.cost_type_);

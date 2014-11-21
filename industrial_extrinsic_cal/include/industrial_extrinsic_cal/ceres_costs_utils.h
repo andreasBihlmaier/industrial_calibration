@@ -48,6 +48,7 @@ namespace industrial_extrinsic_cal
       LinkCameraCircleTargetReprjError,
       LinkCameraCircleTargetReprjErrorPK,
       FixedCircleTargetCameraReprjErrorPK,
+      CalibrateTargetposeForCircleTarget,
       NullCostType
     };
   }// end of namespace cost_functions

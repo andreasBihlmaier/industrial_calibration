@@ -1935,5 +1935,156 @@ namespace industrial_extrinsic_cal
     Point3d point_; /** point expressed in target coordinates */
   };
 
+
+  class  CalibrateTargetposeForCircleTarget
+  {
+  public:
+    CalibrateTargetposeForCircleTarget(const double &ob_x, const double &ob_y, const double &c_dia,
+				       const double &fx, const double &fy, const double &cx, const double &cy,
+				       const Pose6d &link_pose, const Point3d &point,
+               const double* extrinsics) :
+      ox_(ob_x), oy_(ob_y), circle_diameter_(c_dia), fx_(fx), fy_(fy), cx_(cx), cy_(cy), link_pose_(link_pose), point_(point), extrinsics_(extrinsics)
+    {
+      link_posei_ = link_pose_.getInverse();
+    }
+
+    void test_residual(const double  *c_p2, double *residual)
+    {
+      const double *camera_aa(&extrinsics_[0]);
+      const double *camera_tx(&extrinsics_[3]);
+      const double *target_aa(&c_p2[0]);
+      const double *target_tx(&c_p2[3]);
+      double point[3]; /** point in target coordinates */
+      double world_point[3]; /** point in world coordinates */
+      double link_point[3]; /** point in link coordinates */
+      double camera_point[3];  /** point in camera coordinates*/ 
+      double R_LtoC[9]; // rotation from link to camera coordinates
+      double R_WtoL[9]; // rotation from world to link coordinates
+      double R_WtoC[9]; // rotation from world to camera coordinates, and intermediate transform
+      double R_TtoW[9]; // rotation from target to world coordinates
+      double R_TtoC[9];  // rotation from target to camera coordinates (assume circle lies in x-y plane of target coordinates)
+      /** get necessary rotation matrices */
+      ceres::AngleAxisToRotationMatrix(camera_aa, R_LtoC);  
+      printf("camera_aa = %6.3lf %6.3lf %6.3lf\n", camera_aa[0], camera_aa[1], camera_aa[2]);
+      printf("R_camera \n");
+      for(int i=0;i<3;i++){
+	for(int j=0;j<3;j++){
+	  printf("%6.3lf",R_LtoC[i+j*3]);
+	  }
+	printf("\n");
+      }
+      poseRotationMatrix(link_posei_,R_WtoL);
+      printf("R_inverse link\n");
+      for(int i=0;i<3;i++){
+	for(int j=0;j<3;j++){
+	  printf("%6.3lf",R_WtoL[i+j*3]);
+	  }
+	printf("\n");
+      }
+
+      ceres::AngleAxisToRotationMatrix(target_aa, R_TtoW);
+      printf("R_target\n");
+      for(int i=0;i<3;i++){
+	for(int j=0;j<3;j++){
+	  printf("%6.3lf",R_TtoW[i+j*3]);
+	  }
+	printf("\n");
+      }
+      
+      printf("point_ = %6.3lf  %6.3lf %6.3lf\n", point_.x, point_.y, point_.z);
+      /** transform point into camera coordinates */
+      transformPoint3d(target_aa, target_tx, point_, world_point);
+      printf("world_point = %6.3lf  %6.3lf %6.3lf\n", world_point[0], world_point[1], world_point[2]);
+      poseTransformPoint(link_posei_, world_point, link_point);
+      printf("link_point = %6.3lf  %6.3lf %6.3lf\n", link_point[0], link_point[1], link_point[2]);
+      transformPoint(camera_aa, camera_tx, link_point, camera_point);
+      printf("camera_point = %6.3lf  %6.3lf %6.3lf\n", camera_point[0], camera_point[1], camera_point[2]);
+
+      /** find rotation from target to camera coordinates */
+      rotationProduct(R_LtoC, R_WtoL, R_WtoC);
+      rotationProduct(R_WtoC, R_TtoW, R_TtoC); 
+
+      /** compute project point into image plane and compute residual */
+      double circle_diameter = circle_diameter_;
+      double fx = fx_;
+      double fy = fy_;
+      double cx = cx_;
+      double cy = cy_;
+      double ox = ox_;
+      double oy = oy_;
+      //      cameraCircResidual(camera_point, circle_diameter, R_TtoC, fx, fy,cx,cy, ox, oy, residual);
+      cameraPntResidual(camera_point, fx, fy,cx,cy, ox, oy, residual);
+      
+    }
+    template<typename T>
+    bool operator()(const T* const c_p2,  /** 6Dof transform of target into world frame [6] */
+		    T* residual) const
+    {
+      const T *camera_aa(&((const T*)extrinsics_)[0]);
+      const T *camera_tx(&((const T*)extrinsics_)[3]);
+      const T *target_aa(&c_p2[0]);
+      const T *target_tx(&c_p2[3]);
+      T point[3]; /** point in target coordinates */
+      T world_point[3]; /** point in world coordinates */
+      T link_point[3]; /** point in link coordinates */
+      T camera_point[3];  /** point in camera coordinates*/ 
+      T R_LtoC[9]; // rotation from link to camera coordinates
+      T R_WtoL[9]; // rotation from world to link coordinates
+      T R_WtoC[9]; // rotation from world to camera coordinates, and intermediate transform
+      T R_TtoW[9]; // rotation from target to world coordinates
+      T R_TtoC[9];  // rotation from target to camera coordinates (assume circle lies in x-y plane of target coordinates)
+
+      /** get necessary rotation matrices */
+      ceres::AngleAxisToRotationMatrix(camera_aa, R_LtoC);  
+      poseRotationMatrix(link_posei_,R_WtoL);
+      ceres::AngleAxisToRotationMatrix(target_aa, R_TtoW);
+
+      /** transform point into camera coordinates */
+      transformPoint3d(target_aa, target_tx, point_, world_point);
+      poseTransformPoint(link_posei_, world_point, link_point);
+      transformPoint(camera_aa, camera_tx, link_point, camera_point);
+
+      /** find rotation from target to camera coordinates */
+      rotationProduct(R_LtoC, R_WtoL, R_WtoC);
+      rotationProduct(R_WtoC, R_TtoW, R_TtoC); 
+
+      /** compute project point into image plane and compute residual */
+      T circle_diameter = T(circle_diameter_);
+      T fx = T(fx_);
+      T fy = T(fy_);
+      T cx = T(cx_);
+      T cy = T(cy_);
+      T ox = T(ox_);
+      T oy = T(oy_);
+      cameraCircResidual(camera_point, circle_diameter, R_TtoC, fx, fy,cx,cy, ox, oy, residual);
+
+      return true;
+    } /** end of operator() */
+
+    /** Factory to hide the construction of the CostFunction object from */
+    /** the client code. */
+    static ceres::CostFunction* Create(const double &o_x, const double &o_y, const double &c_dia,
+				       const double &fx,  const double &fy,
+				       const double &cx, const double &cy,
+				       const Pose6d &pose, Point3d &point,
+               const double* extrinsics)
+    {
+      return (new ceres::AutoDiffCostFunction<CalibrateTargetposeForCircleTarget, 2, 6>
+	      (new CalibrateTargetposeForCircleTarget(o_x, o_y, c_dia, fx, fy, cx, cy, pose, point, extrinsics)));
+    }
+    double ox_; /** observed x location of object in image */
+    double oy_; /** observed y location of object in image */
+    double circle_diameter_; //** diameter of circle being observed */
+    Pose6d link_pose_; /** transform from link to world coordinates*/
+    Pose6d link_posei_; /** transform from world to link coordinates*/
+    double fx_; /** focal length of camera in x (pixels) */
+    double fy_; /** focal length of camera in y (pixels) */
+    double cx_; /** focal center of camera in x (pixels) */
+    double cy_; /** focal center of camera in y (pixels) */
+    Point3d point_; /** point expressed in target coordinates */
+    const double* extrinsics_;
+  };
+
+
 } // end of namespace
 #endif
