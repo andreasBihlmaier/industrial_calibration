@@ -2020,8 +2020,9 @@ namespace industrial_extrinsic_cal
     bool operator()(const T* const c_p2,  /** 6Dof transform of target into world frame [6] */
 		    T* residual) const
     {
-      const T *camera_aa(&((const T*)extrinsics_)[0]);
-      const T *camera_tx(&((const T*)extrinsics_)[3]);
+      // TODO convert extrinsics_: const double* -> const ceres::Jet<double, 6>*
+      const T *camera_aa(&extrinsics_[0]);
+      const T *camera_tx(&extrinsics_[3]);
       const T *target_aa(&c_p2[0]);
       const T *target_tx(&c_p2[3]);
       T point[3]; /** point in target coordinates */
