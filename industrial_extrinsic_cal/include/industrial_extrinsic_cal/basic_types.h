@@ -179,6 +179,8 @@ namespace industrial_extrinsic_cal
   {
     int pattern_rows;		// number of rows
     int pattern_cols;		// number of colulmns
+    int subpattern_rows;		// CombinedCircleGrid: number of rows
+    int subpattern_cols;		// CombinedCircleGrid: number of columns
     bool is_symmetric;		// not sure
     double circle_diameter;	// size of each circle
   } CircleGridParameters;

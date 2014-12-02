@@ -20,6 +20,12 @@
 namespace industrial_extrinsic_cal
 {
 
+struct combinedtarget_points_sorter {
+  bool operator()(const cv::Point& lhs, const cv::Point& rhs) {
+    return lhs.y < rhs.y || lhs.x < rhs.x;
+  }
+};
+
 ROSCameraObserver::ROSCameraObserver(const std::string &camera_topic) :
     sym_circle_(true), pattern_(pattern_options::Chessboard), pattern_rows_(0), pattern_cols_(0)
 {
@@ -46,11 +52,14 @@ bool ROSCameraObserver::addTarget(boost::shared_ptr<Target> targ, Roi &roi, Cost
     case pattern_options::CircleGrid:
       pattern_ = pattern_options::CircleGrid;
       break;
+    case pattern_options::CombinedCircleGrid:
+      pattern_ = pattern_options::CombinedCircleGrid;
+      break;
     case pattern_options::ARtag:
       pattern_ = pattern_options::ARtag;
       break;
     default:
-      ROS_ERROR_STREAM("target_type does not correlate to a known pattern option (Chessboard, CircleGrid or ARTag)");
+      ROS_ERROR_STREAM("target_type does not correlate to a known pattern option (Chessboard, CircleGrid, CombinedCircleGrid or ARTag)");
       return false;
       break;
   }
@@ -73,12 +82,18 @@ bool ROSCameraObserver::addTarget(boost::shared_ptr<Target> targ, Roi &roi, Cost
       pattern_cols_ = targ->circle_grid_parameters_.pattern_cols;
       sym_circle_ = targ->circle_grid_parameters_.is_symmetric;
       break;
+    case pattern_options::CombinedCircleGrid:
+      pattern_rows_ = targ->circle_grid_parameters_.pattern_rows;
+      pattern_cols_ = targ->circle_grid_parameters_.pattern_cols;
+      subpattern_rows_ = targ->circle_grid_parameters_.subpattern_rows;
+      subpattern_cols_ = targ->circle_grid_parameters_.subpattern_cols;
+      break;
     case pattern_options::ARtag:
       ROS_ERROR_STREAM("AR Tag recognized but pattern not supported yet");
       return false;
       break;
     default:
-      ROS_ERROR_STREAM("pattern_ does not correlate to a known pattern option (Chessboard, CircleGrid or ARTag)");
+      ROS_ERROR_STREAM("pattern_ does not correlate to a known pattern option (Chessboard, CircleGrid, CombinedCircleGrid or ARTag)");
       return false;
       break;
   }
@@ -140,6 +155,47 @@ int ROSCameraObserver::getObservations(CameraObservations &cam_obs)
 	  successful_find = cv::findCirclesGrid(image_roi_, pattern_size , observation_pts_, 
 						cv::CALIB_CB_ASYMMETRIC_GRID | cv::CALIB_CB_CLUSTERING);
 	}
+      break;
+    case pattern_options::CombinedCircleGrid:
+      {
+        ROS_INFO_STREAM("Finding Circles in combined grid...");
+        int successes = 0;
+        bool successful_find_tmp = false;
+        do {
+          std::vector<cv::Point2f> observation_pts_tmp;
+          cv::Size subpattern_size(subpattern_cols_, subpattern_rows_);
+          successful_find_tmp = cv::findCirclesGrid(image_roi_, subpattern_size, observation_pts_tmp, cv::CALIB_CB_SYMMETRIC_GRID);
+          if (successful_find_tmp) {
+            successes++;
+            observation_pts_.insert(observation_pts_.end(), observation_pts_tmp.begin(), observation_pts_tmp.end());
+            /*
+            ROS_INFO_STREAM("Found subtarget with " << observation_pts_tmp.size() << " circles.");
+            for (int pntIdx = 0; pntIdx < observation_pts_tmp.size(); pntIdx++) {
+              ROS_INFO_STREAM("pnt " << pntIdx << ": " << observation_pts_tmp[pntIdx]);
+            }
+            */
+
+            // mask already found pattern
+            std::vector<cv::Point> observation_corner_pnts;
+            observation_corner_pnts.push_back(observation_pts_tmp[0]);
+            observation_corner_pnts.push_back(observation_pts_tmp[subpattern_cols_-1]);
+            observation_corner_pnts.push_back(observation_pts_tmp[(subpattern_rows_-1)* subpattern_cols_]);
+            observation_corner_pnts.push_back(observation_pts_tmp[(subpattern_rows_ * subpattern_cols_) - 1]);
+            cv::fillConvexPoly(image_roi_, &observation_corner_pnts[0], observation_corner_pnts.size(), cv::Scalar(255,255,255));
+          }
+        } while (successful_find_tmp);
+        if (successes > 0) {
+          successful_find = true;
+          for (int pntIdx = 0; pntIdx < observation_pts_.size(); pntIdx++) {
+            ROS_INFO_STREAM("pnt " << pntIdx << ": " << observation_pts_[pntIdx]);
+          }
+          ROS_INFO_STREAM("Sorting points");
+          std::sort(observation_pts_.begin(), observation_pts_.end(), combinedtarget_points_sorter());
+          for (int pntIdx = 0; pntIdx < observation_pts_.size(); pntIdx++) {
+            ROS_INFO_STREAM("pnt " << pntIdx << ": " << observation_pts_[pntIdx]);
+          }
+        }
+      }
       break;
     }
   

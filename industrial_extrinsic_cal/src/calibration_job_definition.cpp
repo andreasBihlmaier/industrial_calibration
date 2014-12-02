@@ -361,8 +361,16 @@ namespace industrial_extrinsic_cal
 		temp_target->circle_grid_parameters_.is_symmetric=true;
 		ROS_DEBUG_STREAM("TargetRows: "<<temp_target->circle_grid_parameters_.pattern_rows);
 		break;
+	      case pattern_options::CombinedCircleGrid:
+		temp_target->circle_grid_parameters_.pattern_rows = this_target["target_rows"].as<int>();
+		temp_target->circle_grid_parameters_.pattern_cols = this_target["target_cols"].as<int>();
+		temp_target->circle_grid_parameters_.subpattern_rows = this_target["subtarget_rows"].as<int>();
+		temp_target->circle_grid_parameters_.subpattern_cols = this_target["subtarget_cols"].as<int>();
+		temp_target->circle_grid_parameters_.circle_diameter = this_target["circle_dia"].as<double>();
+		ROS_DEBUG_STREAM("TargetRows: "<<temp_target->circle_grid_parameters_.pattern_rows);
+		break;
 	      default:
-		ROS_ERROR_STREAM("target_type does not correlate to a known pattern option (Chessboard or CircleGrid)");
+		ROS_ERROR_STREAM("target_type does not correlate to a known pattern option (Chessboard, CircleGrid or CombinedCircleGrid)");
 		return false;
 		break;
 	      } // end of target type

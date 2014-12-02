@@ -48,7 +48,7 @@ namespace pattern_options
 {
   enum pattern_options_
     {
-      Chessboard = 0, CircleGrid = 1, ARtag = 2
+      Chessboard = 0, CircleGrid = 1, CombinedCircleGrid = 2, ARtag = 3
     };
 }
 typedef pattern_options::pattern_options_ PatternOption;
@@ -134,6 +134,16 @@ namespace industrial_extrinsic_cal
      *  @brief target pattern grid number of columns
      */
     int pattern_cols_;
+
+    /**
+     *  @brief CombinedCircleGrid: target subpattern grid number of rows
+     */
+    int subpattern_rows_;
+
+    /**
+     *  @brief CombinedCircleGrid: target subpattern grid number of columns
+     */
+    int subpattern_cols_;
 
     /**
      *  @brief circle grid target pattern true=symmetric
