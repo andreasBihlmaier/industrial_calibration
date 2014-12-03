@@ -20,9 +20,20 @@
 namespace industrial_extrinsic_cal
 {
 
-struct combinedtarget_points_sorter {
-  bool operator()(const cv::Point& lhs, const cv::Point& rhs) {
-    return lhs.y < rhs.y || lhs.x < rhs.x;
+struct combinedtraget_points_less {
+  bool operator()(const cv::Point2f& lhs, const cv::Point2f& rhs) {
+    //ROS_INFO_STREAM("lhs: " << lhs << " rhs: " << rhs);
+    return lhs.x < rhs.x;
+  }
+};
+
+struct combinedtarget_blocks_less {
+  bool operator()(const std::vector<cv::Point2f>& lhs, const std::vector<cv::Point2f>& rhs) {
+    std::vector<cv::Point2f>::const_iterator lhs0 = std::min_element(lhs.begin(), lhs.end(), combinedtraget_points_less());
+    std::vector<cv::Point2f>::const_iterator rhs0 = std::min_element(rhs.begin(), rhs.end(), combinedtraget_points_less());
+    bool res = lhs0->x < rhs0->x;
+    //ROS_INFO_STREAM("lhs0: " << *lhs0 << " rhs0: " << *rhs0 << " res=" << res);
+    return res;
   }
 };
 
@@ -161,13 +172,14 @@ int ROSCameraObserver::getObservations(CameraObservations &cam_obs)
         ROS_INFO_STREAM("Finding Circles in combined grid...");
         int successes = 0;
         bool successful_find_tmp = false;
+        std::vector<std::vector<cv::Point2f> > observation_pointblocks;
         do {
           std::vector<cv::Point2f> observation_pts_tmp;
           cv::Size subpattern_size(subpattern_cols_, subpattern_rows_);
           successful_find_tmp = cv::findCirclesGrid(image_roi_, subpattern_size, observation_pts_tmp, cv::CALIB_CB_SYMMETRIC_GRID);
           if (successful_find_tmp) {
             successes++;
-            observation_pts_.insert(observation_pts_.end(), observation_pts_tmp.begin(), observation_pts_tmp.end());
+            observation_pointblocks.push_back(observation_pts_tmp);
             /*
             ROS_INFO_STREAM("Found subtarget with " << observation_pts_tmp.size() << " circles.");
             for (int pntIdx = 0; pntIdx < observation_pts_tmp.size(); pntIdx++) {
@@ -181,18 +193,28 @@ int ROSCameraObserver::getObservations(CameraObservations &cam_obs)
             observation_corner_pnts.push_back(observation_pts_tmp[subpattern_cols_-1]);
             observation_corner_pnts.push_back(observation_pts_tmp[(subpattern_rows_-1)* subpattern_cols_]);
             observation_corner_pnts.push_back(observation_pts_tmp[(subpattern_rows_ * subpattern_cols_) - 1]);
+            /*
+            for (int pntIdx = 0; pntIdx < observation_corner_pnts.size(); pntIdx++) {
+              ROS_INFO_STREAM("cpnt " << pntIdx << ": " << observation_corner_pnts[pntIdx]);
+            }
+            */
             cv::fillConvexPoly(image_roi_, &observation_corner_pnts[0], observation_corner_pnts.size(), cv::Scalar(255,255,255));
           }
         } while (successful_find_tmp);
         if (successes > 0) {
           successful_find = true;
-          for (int pntIdx = 0; pntIdx < observation_pts_.size(); pntIdx++) {
-            ROS_INFO_STREAM("pnt " << pntIdx << ": " << observation_pts_[pntIdx]);
+          /*
+          for (int blockIdx = 0; blockIdx < observation_pointblocks.size(); blockIdx++) {
+            ROS_INFO_STREAM("oblock " << blockIdx);
+            for (int pntIdx = 0; pntIdx < observation_pointblocks[blockIdx].size(); pntIdx++) {
+              ROS_INFO_STREAM("opnt " << blockIdx << ":" << pntIdx << ": " << observation_pointblocks[blockIdx][pntIdx]);
+            }
           }
           ROS_INFO_STREAM("Sorting points");
-          std::sort(observation_pts_.begin(), observation_pts_.end(), combinedtarget_points_sorter());
-          for (int pntIdx = 0; pntIdx < observation_pts_.size(); pntIdx++) {
-            ROS_INFO_STREAM("pnt " << pntIdx << ": " << observation_pts_[pntIdx]);
+          */
+          std::sort(observation_pointblocks.begin(), observation_pointblocks.end(), combinedtarget_blocks_less());
+          for (int blockIdx = 0; blockIdx < observation_pointblocks.size(); blockIdx++) {
+            observation_pts_.insert(observation_pts_.end(), observation_pointblocks[blockIdx].begin(), observation_pointblocks[blockIdx].end());
           }
         }
       }
