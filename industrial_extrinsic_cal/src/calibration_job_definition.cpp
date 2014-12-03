@@ -1161,14 +1161,14 @@ namespace industrial_extrinsic_cal
 		  {
 		    CostFunction* cost_function =
 		      CalibrateTargetposeForCircleTarget::Create(image_x, image_y, 
-								 circle_dia,
-								 focal_length_x,
-								 focal_length_y,
-								 center_x,
-								 center_y,
-								 camera_mounting_pose,
-								 point,
-                 extrinsics);
+								  circle_dia,
+								  focal_length_x,
+								  focal_length_y,
+								  center_x,
+								  center_y,
+								  extrinsics,
+								  camera_mounting_pose,
+								  point);
 		    problem_.AddResidualBlock(cost_function, NULL, target_pose_params);
       }
       break;
